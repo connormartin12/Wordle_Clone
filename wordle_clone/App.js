@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from './app/config/constants';
 import Keyboard from './app/components/Keyboard';
@@ -7,26 +7,21 @@ import words from './app/config/five_letter_words';
 
 const numberOfGuesses = 6;
 
-function getWord() {
-  // Get random word from list
+const getWord = () => {
   let length = words.length;
   wordPosition = Math.floor(Math.random() * length);
   return words[wordPosition];
-}
+};
 
-function checkGuessValidity(userGuess) {
-  // Check that guess is a word in the list
+const checkGuessValidity = (userGuess) => {
   checkWord = userGuess.join("");
   return words.some(word => word === checkWord);
-}
+};
 
-function playWordle() {
-  let word = getWord();
-  // for (let i = 0; i < 6; i++) {
-  //   // Wait for user to input guess. Don't let user input guess that is less than or greater than 5 characters
-  //   // Only let user input A-Z character, Backspace and Enter
-  // }
-}
+const checkGuess = (userGuess, word) => {
+  checkWord = userGuess.join("");
+  return checkWord === word;
+};
 
 const copyArray = (arr) => {
   return [...(arr.map(rows => [...rows]))];
@@ -34,7 +29,7 @@ const copyArray = (arr) => {
 
 export default function App() {
   // playWordle();
-  const word = 'spare'
+  const [word, setWord] = useState(getWord());
   const letters = word.split('');
 
   const [rows, setRows] = useState(
@@ -42,6 +37,9 @@ export default function App() {
   );
   const [currentRow, setCurrentRow] = useState(0);
   const [currentCol, setCurrentCol] = useState(0);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalText, setModalText] = useState('Would you like to play agan?');
 
   const onKeyPressed = (key) => {
     const updatedRows = copyArray(rows);
@@ -53,14 +51,23 @@ export default function App() {
       if (currentCol === 5) {
         let valid = checkGuessValidity(updatedRows[currentRow]);
         if (valid) {
+          let correct = checkGuess(updatedRows[currentRow], word);
+          if (correct) {
+            setModalText('Well done! Would you like to play again?');
+            setModalVisible(true);
+          }
+          else if (currentRow === 5) {
+            setModalText(`Oh no! The word was ${word}!`);
+            setModalVisible(true);
+          } 
+          setErrorMessage(false);
           setCurrentCol(0);
           setCurrentRow(currentRow + 1);
         } else {
-          console.log("Not in word list");
+          setErrorMessage("Not in word list");
         }
       } else {
-        // Animation saying not enough letters
-        console.log("Not enough letters");
+        setErrorMessage("Not enough letters");
       }
     } else if ((currentCol <= 4 && (currentRow <= 5))) {
       updatedRows[currentRow][currentCol] = key;
@@ -94,8 +101,32 @@ export default function App() {
   const yellowCaps = getAllLettersWithColor(colors.secondary);
   const greyCaps = getAllLettersWithColor(colors.grey);
 
+  const playAgain = () => {
+    setModalVisible(!modalVisible);
+    setWord(getWord());
+    setRows(new Array(numberOfGuesses).fill(new Array(letters.length).fill('')));
+    setCurrentRow(0);
+    setCurrentCol(0);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
+      <Modal
+        animationType = "slide"
+        transparent={true}
+        visible={modalVisible}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>{modalText}</Text>
+            <Pressable
+              style={[styles.button, styles.buttonClose]}
+              onPress={() => playAgain()}>
+              <Text style={styles.textStyle}>Play Again</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
       <Text style={styles.title}>Wordle</Text>
         
         <View style={styles.wordleBoard}>
@@ -119,6 +150,7 @@ export default function App() {
             </View>
           ))}
         </View>
+      <Text style={styles.errorMessage}>{errorMessage}</Text>
       <View style={styles.keyboard}>
         <Keyboard 
           onKeyPressed={onKeyPressed} 
@@ -132,11 +164,31 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  button: {
+    borderRadius: 20,
+    padding: 10,
+    elevation: 2,
+  },
+  buttonClose: {
+    backgroundColor: '#2196F3',
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 22,
+  },
   container: {
     alignItems: 'center',
     backgroundColor: '#fff',
     flex: 1,
     padding: '5%',
+  },
+  errorMessage: {
+    color: 'red',
+    flex: 1,
+    marginVertical: 10,
+    marginTop: 20,
   },
   keyboard: {
     marginBottom: 20,
@@ -149,9 +201,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderColor: colors.lightgrey,
     borderWidth: 2,
-    height: 60,
+    height: 70,
     justifyContent: "center",
-    width: 60,
+    width: 70,
+  },
+  modalText: {
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  textStyle: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   title: {
     fontSize: 32,
@@ -159,7 +235,6 @@ const styles = StyleSheet.create({
     margin: 20,
   },
   wordleBoard: {
-    flex: 1,
     alignItems: 'center',
     gap: 4,
   },
